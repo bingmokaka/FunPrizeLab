@@ -54,6 +54,7 @@ require 'em-websocket-client'
 require 'redis'
 require 'sinatra/base'
 require 'logger'
+require_relative 'market_stream_backoff'
 
 # ===─ Fucking Constants =================================================================================─
 
@@ -216,10 +217,11 @@ class MarketStreamClient < EM::Connection
     # v2 reconnection: exponential backoff with max. We learned. We grew.
     return if Constants::WS_MAX_RECONNECTS && @reconnect_attempt >= Constants::WS_MAX_RECONNECTS
 
-    delay = [
-      Constants::WS_RECONNECT_BASE * (2 ** @reconnect_attempt),
-      Constants::WS_RECONNECT_MAX
-    ].min
+    delay = MarketStreamBackoff.delay(
+      @reconnect_attempt,
+      base: Constants::WS_RECONNECT_BASE,
+      max: Constants::WS_RECONNECT_MAX
+    )
 
     @reconnect_attempt += 1
 
